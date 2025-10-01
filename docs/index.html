@@ -5,19 +5,33 @@
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
   <title>3D Pinball for Windows - Space Cadet</title>
   <style>
-    /* ... your CSS unchanged ... */
+    body {
+      font-family: Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #3a6ea5;
+      margin: 0;
+      overflow: hidden;
+    }
+    canvas.emscripten {
+      border: none;
+      background-color: #000;
+      width: 100vw;
+      height: 100vh;
+      display: block;
+    }
+    #status, #progress {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: white;
+      font-size: 20px;
+    }
   </style>
 </head>
 <body>
-  <div class="active window">
-    <div class="titlebar">
-      <span class="titlebar-title">3D Pinball for Windows - Space Cadet</span>
-      <!-- ... your titlebar buttons ... -->
-    </div>
-    <div class="emscripten" id="status">Downloading...</div>
-    <div class="emscripten"><progress hidden id="progress" max="100" value="0"></progress></div>
-    <canvas class="emscripten" id="canvas" oncontextmenu="event.preventDefault()" style="display:none" tabindex="-1"></canvas>
-  </div>
+  <div id="status">Downloading...</div>
+  <progress hidden id="progress" max="100" value="0"></progress>
+  <canvas class="emscripten" id="canvas" oncontextmenu="event.preventDefault()" tabindex="-1"></canvas>
 
   <script>
     var statusElement = document.getElementById("status"),
@@ -25,74 +39,58 @@
         Module = {
           preRun: [],
           postRun: [],
-          print: (function() {
-            var e = document.getElementById("output");
-            return e && (e.value = ""), function(e) {
-              arguments.length > 1 && (e = Array.prototype.slice.call(arguments).join(" "));
-              console.log(e);
-            }
-          })(),
-          printErr: function(e) {
-            arguments.length > 1 && (e = Array.prototype.slice.call(arguments).join(" "));
-            console.error(e);
-          },
+          print: function(text) { console.log(text); },
+          printErr: function(text) { console.error(text); },
           canvas: (function() {
             var e = document.getElementById("canvas");
-            e.addEventListener("webglcontextlost", function(e) {
+            e.addEventListener("webglcontextlost", function(ev) {
               alert("WebGL context lost. You will need to reload the page.");
-              e.preventDefault();
-            }, !1);
+              ev.preventDefault();
+            }, false);
             return e;
           })(),
-          setStatus: function(e) {
+          setStatus: function(text) {
             if (!Module.setStatus.last) Module.setStatus.last = {time: Date.now(), text: ""};
-            if (e !== Module.setStatus.last.text) {
-              var t = e.match(/([^(]+)\((\d+(\.\d+)?)\/(\d+)\)/),
-                  n = Date.now();
-              if (!(t && n - Module.setStatus.last.time < 30)) {
-                Module.setStatus.last.time = n;
-                Module.setStatus.last.text = e;
-                if (t) {
-                  e = t[1];
-                  progressElement.value = 100 * parseInt(t[2]);
-                  progressElement.max = 100 * parseInt(t[4]);
-                  progressElement.hidden = !1;
+            if (text !== Module.setStatus.last.text) {
+              var m = text.match(/([^(]+)\((\d+(\.\d+)?)\/(\d+)\)/),
+                  now = Date.now();
+              if (!(m && now - Module.setStatus.last.time < 30)) {
+                Module.setStatus.last.time = now;
+                Module.setStatus.last.text = text;
+                if (m) {
+                  text = m[1];
+                  progressElement.value = 100 * parseInt(m[2]);
+                  progressElement.max = 100 * parseInt(m[4]);
+                  progressElement.hidden = false;
                 } else {
                   progressElement.value = null;
                   progressElement.max = null;
-                  progressElement.hidden = !0;
+                  progressElement.hidden = true;
                   document.getElementById("canvas").style.display = "";
                 }
-                statusElement.innerHTML = e;
-                if (e === "") {
+                statusElement.innerHTML = text;
+                if (text === "" || text === "All downloads complete.") {
                   statusElement.style.display = "none";
                   progressElement.style.display = "none";
-                } else {
-                  statusElement.style.display = "";
-                  progressElement.style.display = "";
                 }
               }
             }
           },
-          totalDependencies: 0,
-          monitorRunDependencies: function(e) {
-            this.totalDependencies = Math.max(this.totalDependencies, e);
-            Module.setStatus(
-              e ? "Preparing... ("+(this.totalDependencies-e)+"/"+this.totalDependencies+")"
-                : "All downloads complete."
-            );
+          locateFile: function(path) {
+            if (path.endsWith(".wasm")) return "SpaceCadetPinball.wasm";
+            if (path.endsWith(".data")) return "SpaceCadetPinball.data";
+            return path;
           }
         };
     Module.setStatus("Downloading...");
     window.onerror = function() {
       Module.setStatus("Exception thrown, see JavaScript console");
-      Module.setStatus = function(e) {
-        e && Module.printErr("[post-exception status] " + e);
-      }
-    }
+      Module.setStatus = function(text) {
+        text && Module.printErr("[post-exception status] " + text);
+      };
+    };
   </script>
 
-  <!-- only ONE load of the Emscripten module -->
   <script async src="SpaceCadetPinball.js"></script>
 </body>
 </html>
